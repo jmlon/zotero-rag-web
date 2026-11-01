@@ -75,4 +75,74 @@ Consequences for the indexer (PRD §6.5):
 - **Rate limits and very large first syncs.** The test group is tiny. A first sync of
   about 1,000 items is about 10 paginated requests (100 items each), plus one file
   download per attachment. Measure it in M2.
-- **S2, S4 and S5** are still open.
+- **S2 and S5** are still open (they need Railway).
+
+## S4: Postgres full-text search vs BM25 (2026-11-01)
+
+Run by `spikes/s4_fts_vs_bm25.py` and `spikes/s4b_sql_bm25.py` on the CLI's `kg`
+index folder: 12 papers, 1,167 chunks, and the `kg-v3` golden set (36 questions, 33
+with a verbatim answering passage). Each run used a throwaway pgvector 0.8.3
+container. "Passage" means every expected quote is in the retrieved text, the eval's
+own rule.
+
+### Which chunks match: identical
+
+For all 36 questions, Postgres full-text search matched exactly the chunks BM25
+matches, as designed (both use `retrieval.tokenize`).
+
+### How they rank: Postgres's ranking is not usable
+
+| Keyword half | Passage in keyword top 7 / 28 / 112 | Passage in **fused** top 7 / 28 |
+|---|---|---|
+| BM25 (in memory, the CLI's) | 28 / 29 / 33 | **29** / 33 |
+| Postgres `ts_rank_cd` | 7 / 14 / 25 | **18** / 31 |
+| none (vector only) | – | 26 / 31 |
+
+The fused rows use the folder's own vectors (qwen3-embedding-8b) for the vector half,
+which is identical in both, so the difference is the keyword half's alone.
+**`ts_rank_cd` makes hybrid retrieval worse than no keyword search at all.**
+It has no inverse document frequency, and the `simple` configuration keeps every
+word, so common words like "the" and "what" decide the order. BM25 discounts them.
+
+### BM25 computed in SQL: exact, but slow at the top of the range
+
+BM25 needs only what Postgres already has: term counts in each chunk's `tsvector`, and
+document frequencies from `ts_stat` (a small `term_df` table refreshed after each
+sync). `s4b` computes rank_bm25's exact BM25Okapi formula in SQL.
+
+| | ~1.2k chunks | ~99k chunks (the library copied 85×) |
+|---|---|---|
+| Ranking vs in-memory BM25 | identical top 7 for 36/36; 100% overlap at 28 and 112 | – |
+| SQL BM25, per search | 20 ms | 2.4 s median, 3.2 s max |
+| SQL BM25, candidates matched only on words in < half the chunks | 18 ms (still identical) | 1.9 s |
+| Statistics refresh after a sync | – | 38 s |
+| In-memory BM25, per search | ~1 ms | 300 ms median |
+| In-memory BM25, build / memory | – | 12 s / ~1 GB |
+
+The SQL version's cost is unpacking the `tsvector` of every candidate chunk. Almost
+every chunk contains some word of the question. A postings table
+(`term, chunk_id, tf`, indexed by term) would avoid the unpacking, at the price of
+about 10M rows at 100k chunks. That is not measured.
+
+The PRD's sizing is *up to* ~100k chunks (1,000 papers at ~100 chunks each). A
+library of a few hundred papers is 20–50k chunks, where both exact options are
+roughly 2–5× faster than the 99k figures.
+
+### Also found: wide embedding models cannot use the vector index
+
+Writing the folder's real 4,096-dimension vectors to `PgStore` failed with
+`column cannot have more than 2000 dimensions for hnsw index`. pgvector's HNSW takes
+at most 2,000 dimensions for `vector` and 4,000 for `halfvec`. The web app's default,
+`text-embedding-3-small` (1,536), is fine. qwen3-embedding-8b (4,096) and
+other wide models need either an exact scan without an index, or a model that offers
+fewer dimensions. Settings validation should reject them with a clear message
+instead of failing on the first write.
+
+### Decisions needed
+
+1. **Keyword ranking for the web app** (see the options above). `PgFullTextSearcher`
+   as shipped in core 0.5.0 must not be used for ranking. The CLI's `--store` path
+   currently uses it, so a parity eval run through `--store` today would understate
+   hybrid retrieval.
+2. **Embedding width limit:** reject models over 2,000 dimensions, or support them
+   without an index.
