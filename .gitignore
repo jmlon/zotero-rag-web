@@ -1,0 +1,19 @@
+# Credentials: never committed.
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Frontend
+web/node_modules/
+web/dist/
+
+# Spike output may contain library data.
+spikes/out/
