@@ -20,7 +20,9 @@ to `PRD.md`.
 
 The findings go in `docs/spikes.md`.
 
-**S1 and S3 are done** (2026-11-01, all 22 checks passed); see `docs/spikes.md`. One change
+**S1, S3 and S4 are done** (2026-11-01); see `docs/spikes.md`. S4 replaced Postgres's
+ranking with BM25 computed in SQL (core 0.5.1), so the web app depends on
+`core-v0.5.1`. One change
 follows from them: in M2, give the core's `citation_url` a group-id link form, so
 citations survive a group rename.
 
@@ -217,10 +219,10 @@ zotero-rag-web/
    `psycopg[binary,pool]`, `itsdangerous`, `typer`, `structlog`. Dev dependencies:
    `pytest`, `pytest-asyncio`, `httpx`, `testcontainers[postgres]`, `ruff`, `mypy`.
 2. `settings.py` with every variable from PRD §7, with validation (for example
-   `CHUNK_OVERLAP < CHUNK_SIZE`, and a known embedding model so its dimension is
-   known).
+   `CHUNK_OVERLAP < CHUNK_SIZE`, and a known embedding model of **at most 2,000
+   dimensions**, from the core's catalogue; S4 found wider ones cannot be indexed).
 3. Alembic `0001_initial`: the core's `pg_schema.sql` verbatim (via
-   `zotero_rag_core.stores.pg.schema_sql()`), then the web app's own columns,
+   `zotero_rag_core.stores.pg.schema_sql()`, core 0.5.1), then the web app's own columns,
    tables and indexes from PRD §10. No vector width is needed at migration time.
 4. `app.py`: `/healthz`, a static mount of `web/dist` with an `index.html` fallback,
    JSON logging, request ids, `X-Robots-Tag`, and `robots.txt`.
@@ -261,6 +263,8 @@ and `zrw migrate` creates the schema.
 - `zrw reindex --repair` (new embedding model: re-embed from `chunks.text` into a new
   column, then swap it in a transaction) and `--rechunk` (re-download and rebuild).
 - `zrw status` prints counts, the last 5 runs and the fingerprint.
+- At the end of every sync, call `PgStore.refresh_keyword_stats()` (about 40 s at
+  100k chunks). Otherwise the first question after a sync pays for it.
 
 ### M2.2 Vector and keyword queries
 

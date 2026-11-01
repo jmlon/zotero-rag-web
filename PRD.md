@@ -72,7 +72,7 @@ Status: draft for review, 2026-11-01.
 | Topic | Decision | Why |
 |---|---|---|
 | Vector DB | **Postgres + pgvector** | The containers stay stateless on all four platforms, and every platform offers managed Postgres. One database holds vectors, keyword search, the collection tree, conversations and usage. Chroma would need a second stateful service with a volume. |
-| Keyword half of hybrid | **Postgres full-text search** (tsvector over BM25's own tokens) | Replaces the in-memory BM25 that the CLI rebuilds at every start (`retrieval.py` `KeywordIndex`). Parity is verified by eval (§12). |
+| Keyword half of hybrid | **BM25 computed in SQL** over a tsvector of BM25's own tokens (S4) | Replaces the in-memory BM25 that the CLI rebuilds at every start (`retrieval.py` `KeywordIndex`). Parity is verified by eval (§12). |
 | Library | **One Zotero group**, from the root, including unfiled items | One deployment serves one team. |
 | Frontend | **React (Vite, TypeScript) SPA** served by **FastAPI** from the same container | The richest chat UX, and the JSON/SSE API can be reused later. |
 | Sync | **Scheduled incremental index job** (Railway cron) | There is no indexing inside web requests. |
@@ -209,12 +209,13 @@ Both retrievers are implemented in the core (`zotero_rag_core.stores.pg`, built 
   `embedding::vector(N)`. Index folders' Chroma uses squared L2, not cosine.
   For the unit-length vectors embedding models return, both rank identically, but
   the distance values are not comparable across the two stores.
-- **Keyword:** `PgFullTextSearcher` ranks with `ts_rank_cd` over a `tsv` column built
-  from the core's own `retrieval.tokenize` output, and queries an OR of the question's
-  tokens. Postgres's own parser keeps `3.5`, `e-mail` and accents whole, so building
-  the column from BM25's tokens is what makes both searches match exactly the same
-  chunks (a test checks this). No `unaccent` extension is needed. Only the ranking
-  differs from BM25.
+- **Keyword:** `PgFullTextSearcher` matches through a `tsv` column built from the
+  core's own `retrieval.tokenize` output, and ranks with **BM25 computed in SQL**
+  (core 0.5.1). Postgres's own `ts_rank_cd` was measured and rejected (S4,
+  docs/spikes.md): without inverse document frequency, it made hybrid retrieval
+  worse than no keyword search. The SQL version returns exactly what the CLI's
+  in-memory BM25 returns. It needs a `term_df` table, refreshed after each sync.
+  No `unaccent` extension is needed.
 - **Filters** become a `WHERE` on the joined `items` row, in both retrievers, *before*
   the limit. This is the same guarantee as the CLI's scoped search, where both
   retrievers apply the scope before their own cut. Filtered HNSW uses pgvector ≥ 0.8
@@ -388,7 +389,7 @@ package data in the core.
 | `CONDENSE_MODEL` | = `LLM_MODEL` | |
 | `CONDENSE` | `true` | |
 | `HISTORY_TURNS` | `6` | |
-| `EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Changing it requires `zrw reindex --repair`. |
+| `EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Changing it requires `zrw reindex --repair`. At most 2,000 dimensions (pgvector's index limit); a wider model is rejected at startup. |
 | `RERANKER` | `voyageai/rerank-3-lite` | `none` disables. |
 | `TOP_K` / `RERANKER_FANOUT` | `7` / `4` | |
 | `RETRIEVAL` | `hybrid` | `vector` disables full-text search. |
@@ -612,7 +613,7 @@ Nothing is Railway-specific beyond `railway.json`. The plan ships notes for:
 
 | Risk / question | Mitigation / owner |
 |---|---|
-| Postgres FTS ranking is weaker than BM25 → hybrid gain lost | Eval in M2. In-process BM25 fallback (§12). |
+| Postgres FTS ranking is weaker than BM25 → hybrid gain lost | **Happened (S4)**: fixed by BM25 in SQL, with identical results. Its latency grows with the library (2.4 s at ~100k chunks), so a postings table is the next step if a library gets that large. |
 | Railway's pgvector image is older than 0.8 (no iterative scan) | Spike S2. Otherwise use a custom `pgvector/pgvector:pg17` image service. |
 | The open URL leaks and costs money | Spend cap + OpenRouter key limit. Cloudflare Access can be added without code. |
 | `links.alternate.href` format for groups | **Resolved (S3, docs/spikes.md):** it holds only the group slug, which a rename breaks. Citations are built from the numeric group id instead. |

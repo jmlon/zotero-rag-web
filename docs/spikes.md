@@ -138,11 +138,14 @@ other wide models need either an exact scan without an index, or a model that of
 fewer dimensions. Settings validation should reject them with a clear message
 instead of failing on the first write.
 
-### Decisions needed
+### Decisions taken (2026-11-01)
 
-1. **Keyword ranking for the web app** (see the options above). `PgFullTextSearcher`
-   as shipped in core 0.5.0 must not be used for ranking. The CLI's `--store` path
-   currently uses it, so a parity eval run through `--store` today would understate
-   hybrid retrieval.
-2. **Embedding width limit:** reject models over 2,000 dimensions, or support them
-   without an index.
+1. **Keyword ranking: BM25 computed in SQL** (zotero-rag-core 0.5.1). A
+   `term_df` table and corpus totals are refreshed after each sync; a search
+   refreshes stale statistics first. Re-running S4 with it: 100% overlap with
+   in-memory BM25 at 7, 28 and 112, and the same passage hits, both keyword-only
+   (28 / 29 / 33) and fused (**29** / 33). Latency is as measured above. If a
+   library ever approaches 100k chunks, a postings table is the next step.
+2. **Embedding width: rejected at startup** when over 2,000 dimensions. The core
+   now refuses such vectors with a clear message; the web app's settings
+   validation should reject the model before that (PLAN M1).
