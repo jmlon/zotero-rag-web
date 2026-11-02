@@ -252,6 +252,25 @@ and `zrw migrate` creates the schema.
 
 ## M2 — Indexer and retrieval on Postgres
 
+> **Status (2026-11-02): built; the live check is pending a valid OpenRouter key.**
+> 51 tests run the sync against a fake Zotero, real PDFs and a real database, and
+> cover new, moved, re-tagged, replaced and deleted items. Parity with the CLI is
+> measured: same retrieval on 36/36 questions, score 4.75 vs 4.78 (`docs/parity.md`).
+> Where it differs from the steps below:
+>
+> - **Whole-library listing, not `since=`.** When the version has changed, the sync lists
+>   everything (~30 requests for 1,000 items). Choosing among an item's attachments
+>   needs all of them, and Zotero never re-sends an edited item's children (S1).
+>   Removals are then "indexed but no longer listed", which covers trashed and
+>   deleted items alike; `fetch_removed_item_keys` is not needed.
+> - **A probe embedding** checks the key and the model's width before any download,
+>   and **the cursor stays while any attachment failed**, so failures are retried.
+>   Both came from the first live run (a rejected key passed as an "ok" run).
+> - **A different chunking warns, as in the CLI**; only a different embedding model
+>   stops the sync.
+> - Citations link by group id (S3), set on the plan, so no core change was needed.
+> - M2.2/M2.3 are the core's (0.5.1); M2.4's property test is the core's grid test.
+
 ### M2.1 `zrw index` (PRD §6.5)
 
 - `indexing/sync.py`:

@@ -573,6 +573,9 @@ Nothing is Railway-specific beyond `railway.json`. The plan ships notes for:
 
 ## 12. Quality: measuring parity
 
+**Measured (2026-11-02, docs/parity.md):** the same retrieval as the CLI on 36/36
+questions (paper and passage hits), score 4.75 vs the CLI's 4.78 on the same chunks.
+
 - The core gains a `[pgvector]` `ChunkStore`. The CLI's `eval` can target it with
   `zotero-rag eval --store postgres://…`, so the **same question sets** (`kg-v3`,
   `questions/*.yaml`) are graded against the hosted retrieval stack.
