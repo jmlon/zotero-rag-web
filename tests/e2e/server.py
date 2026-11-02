@@ -82,6 +82,7 @@ def seed(url: str, settings: Settings) -> None:
                 "year": str(y),
                 "year_int": y,
                 "page": 1,
+                "document_format": "pdf",
                 "collection_keys": c,
                 "tags": tg,
                 "zotero_url": f"https://www.zotero.org/groups/1/items/{i}",

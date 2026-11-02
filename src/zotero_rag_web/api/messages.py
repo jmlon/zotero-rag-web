@@ -38,6 +38,7 @@ from zotero_rag_web.chat.service import (
     source_json,
     usage_json,
 )
+from zotero_rag_web.indexing.library import attachment_formats
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/conversations", tags=["messages"])
@@ -171,10 +172,12 @@ def _answer(request: Request, prepared: Prepared, emit: Any, cancelled: threadin
 
     status = "stopped" if answer.stopped else "done"
     text = answer.partial if answer.stopped else answer.result.answer
-    sources = [source_json(s) for s in answer.result.sources if s.cited]
+    cited = [s for s in answer.result.sources if s.cited]
     usage = usage_json(answer)
     with app.state.pool.connection() as conn:
         conn.autocommit = True
+        formats = attachment_formats(conn, [s.attachment_key for s in cited])
+        sources = [source_json(s, formats) for s in cited]
         conversations.finish_exchange(
             conn,
             prepared.assistant_id,

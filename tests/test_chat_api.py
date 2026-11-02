@@ -20,10 +20,10 @@ from typer.testing import CliRunner
 
 from tests.conftest import make_settings
 from zotero_rag_core.fingerprint import StoreFingerprint
-from zotero_rag_core.querying import NO_CONTEXT_ANSWER
+from zotero_rag_core.querying import NO_CONTEXT_ANSWER, Source
 from zotero_rag_core.stores.pg import PgFullTextSearcher, PgStore
 from zotero_rag_web.app import create_app
-from zotero_rag_web.chat.service import AnswerEngine
+from zotero_rag_web.chat.service import AnswerEngine, source_json
 from zotero_rag_web.cli import app as cli
 from zotero_rag_web.identity import COOKIE_NAME
 from zotero_rag_web.settings import Settings
@@ -90,6 +90,7 @@ def indexed(database_url: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]
             {
                 "attachment_key": "A1",
                 "item_key": "P1",
+                "document_format": "pdf",
                 "title": "What is a Fog Node",
                 "authors": "Tordera, Eva",
                 "year": "2016",
@@ -247,7 +248,8 @@ def test_an_answer_streams_and_is_saved(client: TestClient) -> None:
         "What is a Fog Node",
         "p. 3",
     )
-    assert source["zotero_url"] == "https://www.zotero.org/groups/1/items/P1"
+    # A PDF opens in zotero.org's reader, not on its item's details page.
+    assert source["zotero_url"] == "https://www.zotero.org/groups/1/items/P1/attachment/A1/reader"
     assert "excerpts" not in source
 
     saved = client.get(f"/api/conversations/{key}").json()
@@ -467,3 +469,27 @@ def test_without_a_price_an_answer_counts_against_the_cap(indexed: str, models: 
     answer = engine_for(indexed, models).ask("fog?", [], None, lambda *_: None, threading.Event())
     assert answer.cost_source == "estimate"
     assert total_cost(answer) >= FALLBACK_ANSWER_COST_USD
+
+
+@pytest.mark.parametrize(
+    ("attachment_key", "formats", "url"),
+    [
+        ("A1", {"A1": "pdf"}, "https://www.zotero.org/groups/1/items/P1/attachment/A1/reader"),
+        ("A1", {"A1": "html"}, "https://www.zotero.org/groups/1/items/P1"),
+        ("A1", {"A1": "markdown"}, "https://www.zotero.org/groups/1/items/P1"),
+        ("N1", {"N1": "note"}, "https://www.zotero.org/groups/1/items/P1"),
+        ("A1", {}, "https://www.zotero.org/groups/1/items/P1"),
+        ("", {"": "pdf"}, "https://www.zotero.org/groups/1/items/P1"),
+    ],
+)
+def test_only_a_pdf_links_to_the_reader(
+    attachment_key: str, formats: dict[str, str], url: str
+) -> None:
+    source = Source(
+        number=1,
+        item_key="P1",
+        attachment_key=attachment_key,
+        zotero_url="https://www.zotero.org/groups/1/items/P1",
+    )
+    assert source_json(source, formats)["zotero_url"] == url
+    assert source_json(source)["zotero_url"] == "https://www.zotero.org/groups/1/items/P1"

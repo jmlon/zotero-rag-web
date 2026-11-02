@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -207,10 +207,31 @@ class AnswerEngine:
         return "estimate"
 
 
-def source_json(source: Source) -> dict[str, Any]:
-    """A cited source as the client shows it: no passage text, plus its locator."""
+#: Attachment formats zotero.org opens in its reader. Others (and notes) link to the
+#: item's details page, which lists the item's files.
+READER_FORMATS = frozenset({"pdf"})
+
+
+def reader_url(item_url: str, attachment_key: str) -> str:
+    """The attachment open in zotero.org's reader, from its parent item's link.
+
+    zotero.org redirects `/groups/<id>/items/<item>/attachment/<key>/reader` to the
+    same path with the group's name in it, so the link needs only the group id.
+    """
+    return f"{item_url.rstrip('/')}/attachment/{attachment_key}/reader"
+
+
+def source_json(source: Source, formats: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """A cited source as the client shows it: no passage text, plus its locator.
+
+    `formats` maps attachment keys to their document format; a source from a PDF
+    links straight to the file in the reader, any other to its item.
+    """
     data = source.model_dump(exclude={"excerpts", "distance"})
     data["locator"] = source.locator
+    key = source.attachment_key
+    if source.zotero_url and key and (formats or {}).get(key) in READER_FORMATS:
+        data["zotero_url"] = reader_url(source.zotero_url, key)
     return data
 
 

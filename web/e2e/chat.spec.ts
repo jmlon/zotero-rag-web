@@ -39,7 +39,7 @@ test("asking from the welcome screen streams a cited answer", async ({ page, con
   const card = page.getByRole("dialog");
   await expect(card.getByRole("link", { name: /Open in Zotero/ })).toHaveAttribute(
     "href",
-    "https://www.zotero.org/groups/1/items/P1",
+    "https://www.zotero.org/groups/1/items/P1/attachment/A1/reader",
   );
   await page.keyboard.press("Escape");
 

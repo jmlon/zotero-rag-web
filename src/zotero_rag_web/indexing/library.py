@@ -27,6 +27,17 @@ def item_url(group_id: int, item_key: str) -> str:
     return f"{ZOTERO_WEB}/groups/{group_id}/items/{item_key}"
 
 
+def attachment_formats(conn: psycopg.Connection[Any], keys: Iterable[str]) -> dict[str, str]:
+    """Each indexed attachment's document format (pdf, html, markdown, ...), by key."""
+    wanted = sorted({key for key in keys if key})
+    if not wanted:
+        return {}
+    rows = conn.execute(
+        "SELECT key, document_format FROM attachments WHERE key = ANY(%s)", (wanted,)
+    ).fetchall()
+    return {str(row[0]): str(row[1]) for row in rows if row[1]}
+
+
 def is_parent(entry: Mapping[str, Any]) -> bool:
     data = entry.get("data") or {}
     return data.get("itemType") not in ("attachment", "note", "annotation")
