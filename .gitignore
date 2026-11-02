@@ -21,3 +21,4 @@ spikes/out/
 # Playwright
 web/test-results/
 web/playwright-report/
+web/*.tsbuildinfo
