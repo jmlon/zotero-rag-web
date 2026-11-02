@@ -338,6 +338,23 @@ is recorded.
 
 ## M3 — Chat API
 
+> **Status (2026-11-02): done.** 69 tests, plus a live check (`scripts/live_chat_check.py`,
+> 9/9) with the real models: a cited answer, a follow-up condensed correctly
+> ("What problem can that cause…" became a question naming ECMP), a Spanish question
+> answered in Spanish, and a collection filter that excluded the answer. Where it
+> differs from the steps below:
+>
+> - **Stop is the client closing the request**, with no `DELETE …/stream`. The request
+>   middleware became plain ASGI so the disconnect reaches the stream; a real-server
+>   test checks the partial answer is saved as `stopped`.
+> - **Streamed answers are priced from their tokens.** Found live: OpenRouter reports a
+>   call's cost only when it is not streamed, so every answer counted as free and the
+>   spend cap could never trip. The answering model's list price is fetched at startup,
+>   with a conservative flat estimate if it cannot be. The CLI's terminal UI streams
+>   too, and has the same blind spot in its usage figures (a core fix, later).
+> - Refusals before any cost are JSON errors, not SSE events; the stream only carries
+>   errors that happen while answering (`llm_failed`, `internal`).
+
 ### M3.1 Identity
 
 - Middleware: read and verify `zrw_bid`. If it is missing or invalid, mint a new id,

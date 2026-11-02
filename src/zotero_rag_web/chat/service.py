@@ -16,6 +16,7 @@ from typing import Any, Literal, cast
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 
 from zotero_rag_core.fingerprint import StoreFingerprint, blocking
+from zotero_rag_core.llm import ModelPrice, fetch_price
 from zotero_rag_core.querying import (
     Answerer,
     Condensed,
@@ -33,6 +34,10 @@ from zotero_rag_core.store import ChunkStore, Filters
 from zotero_rag_web.settings import Settings
 
 logger = logging.getLogger(__name__)
+
+#: Charged per answer when neither the provider nor a list price says what it cost:
+#: high on purpose, so the daily spend cap errs towards stopping early.
+FALLBACK_ANSWER_COST_USD = 0.002
 
 Stage = Literal["condensing", "retrieving", "answering"]
 #: (event name, payload): what a question's progress looks like to the client.
@@ -58,6 +63,8 @@ class Answer:
     standalone: str | None
     stopped: bool = False
     partial: str = ""
+    #: Where the answer's cost came from: provider, list_price or estimate.
+    cost_source: str = "provider"
 
 
 @dataclass
@@ -72,6 +79,9 @@ class AnswerEngine:
     condense_chat: Answerer | None
     keyword: KeywordSearcher | None
     rerank: RerankFn | None
+    #: The answering model's list price. OpenRouter reports what a call cost only
+    #: when it is not streamed, so streamed answers are priced from their tokens.
+    answer_price: ModelPrice | None = None
 
     @classmethod
     def from_settings(cls, settings: Settings, pool: Any) -> AnswerEngine:
@@ -95,9 +105,17 @@ class AnswerEngine:
         def stream_chat(messages: list[BaseMessage]) -> Iterator[AIMessageChunk]:
             return cast(Iterator[AIMessageChunk], chat.stream(messages))
 
+        price = fetch_price(settings.openrouter_endpoint, settings.llm_model)
+        if price is None:
+            logger.warning(
+                "no list price for %s: each answer counts as $%.3f towards the spend cap",
+                settings.llm_model,
+                FALLBACK_ANSWER_COST_USD,
+            )
         return cls(
             settings=settings,
             store=store,
+            answer_price=price,
             embed_query=build_embeddings(config).embed_query,
             stream_chat=stream_chat,
             condense_chat=condense_chat,
@@ -173,7 +191,20 @@ class AnswerEngine:
             logger.info("answer stopped by the asker after %d characters", len(partial))
             stopped = QueryResult(question=question, answer=partial.strip(), condensed=condensed)
             return Answer(stopped, condensed.question if condensed else None, True, partial)
-        return Answer(result, condensed.question if condensed else None)
+        return Answer(
+            result, condensed.question if condensed else None, cost_source=self._price(result)
+        )
+
+    def _price(self, result: QueryResult) -> str:
+        """Fill in what a streamed answer cost, if the provider did not say."""
+        usage = result.usage
+        if usage.answer_cost is not None:
+            return "provider"
+        if self.answer_price is not None:
+            usage.answer_cost = self.answer_price.cost(usage.prompt_tokens, usage.completion_tokens)
+            return "list_price"
+        usage.answer_cost = FALLBACK_ANSWER_COST_USD
+        return "estimate"
 
 
 def source_json(source: Source) -> dict[str, Any]:
@@ -203,5 +234,6 @@ def usage_json(answer: Answer) -> dict[str, Any]:
         else 0,
         "elapsed_s": round(usage.elapsed_s, 2),
         "total_cost": total_cost(answer),
+        "cost_source": answer.cost_source,
         "reranked": answer.result.reranked,
     }

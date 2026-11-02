@@ -45,11 +45,16 @@ class FakeModels:
         return [1.0] + [0.0] * (WIDTH - 1)
 
     def stream(self, messages: list[BaseMessage]) -> Iterator[AIMessageChunk]:
+        """Like OpenRouter streaming: token counts on the last chunk, but no cost."""
         self.prompts.append(messages)
         for n, word in enumerate(self.answer.split(" ")):
             if self.fail_after is not None and n >= self.fail_after:
                 raise RuntimeError("provider went away")
             yield AIMessageChunk(content=word if n == 0 else " " + word)
+        yield AIMessageChunk(
+            content="",
+            usage_metadata={"input_tokens": 1000, "output_tokens": 100, "total_tokens": 1100},
+        )
 
     def condense(self, messages: list[BaseMessage]) -> AIMessage:
         self.condensed.append(messages)
@@ -252,7 +257,8 @@ def test_an_answer_streams_and_is_saved(client: TestClient) -> None:
         ("assistant", "done"),
     ]
     assert saved["messages"][1]["content"] == ANSWER
-    assert saved["messages"][1]["usage"]["total_cost"] == 0
+    usage = saved["messages"][1]["usage"]
+    assert usage["cost_source"] == "estimate"  # no list price given to this engine
 
 
 def test_a_follow_up_is_condensed_and_answered_with_history(
@@ -441,3 +447,23 @@ def test_closing_the_connection_stops_the_answer_and_keeps_its_start(
     finally:
         server.should_exit = True
         thread.join(timeout=10)
+
+
+def test_a_streamed_answer_is_priced_from_its_tokens(indexed: str, models: FakeModels) -> None:
+    """Found live: OpenRouter reports no cost for a streamed call, so every answer
+    counted as free and the daily spend cap could never trip."""
+    from zotero_rag_core.llm import ModelPrice
+
+    engine = engine_for(indexed, models)
+    engine.answer_price = ModelPrice(prompt=1e-6, completion=2e-6)
+    answer = engine.ask("What is a fog node?", [], None, lambda *_: None, threading.Event())
+    assert answer.cost_source == "list_price"
+    assert answer.result.usage.answer_cost == pytest.approx(1000 * 1e-6 + 100 * 2e-6)
+
+
+def test_without_a_price_an_answer_counts_against_the_cap(indexed: str, models: FakeModels) -> None:
+    from zotero_rag_web.chat.service import FALLBACK_ANSWER_COST_USD, total_cost
+
+    answer = engine_for(indexed, models).ask("fog?", [], None, lambda *_: None, threading.Event())
+    assert answer.cost_source == "estimate"
+    assert total_cost(answer) >= FALLBACK_ANSWER_COST_USD
