@@ -33,10 +33,11 @@ docker compose logs -f web       # optional: follow the app's log (Ctrl-C to sto
 ## 5. Index the library
 The first run downloads and embeds every PDF, which costs a few cents through OpenRouter.
 ```sh
-docker compose exec web zrw index    # prints a summary; check "status": "ok"
+docker compose exec web zrw index    # prints a summary: look for "Sync ok"
 docker compose exec web zrw status   # what is indexed
 ```
 Re-run `zrw index` after the library changes; it only processes what changed.
+Add `-v` to see each file and request as it goes, or `--json` for the full report.
 
 ## 6. Use it
 Open http://localhost:8000

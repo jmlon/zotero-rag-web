@@ -24,8 +24,21 @@ def _add_request_id(
     return event
 
 
-def configure(level: str = "INFO", fmt: str = "json") -> None:
-    """Route the standard library's logging (uvicorn, the core) through structlog."""
+#: Third-party loggers and the most they may say. An HTTP client's INFO line per
+#: request says little, and a file download's line carries its signed URL; pypdf
+#: repeats one warning per font per page.
+NOISY_LOGGERS = {"httpx": "WARNING", "httpx2": "WARNING", "httpcore": "WARNING", "pypdf": "ERROR"}
+
+#: The pipeline's own loggers: per-file detail that `zrw index` shows only with -v.
+CORE_LOGGERS = ("zotero_rag_core",)
+
+
+def configure(level: str = "INFO", fmt: str = "json", *, quiet_core: bool = False) -> None:
+    """Route the standard library's logging (uvicorn, the core) through structlog.
+
+    `quiet_core` keeps the pipeline to warnings, for a command that reports what it
+    did in its own words.
+    """
     shared: list[structlog.typing.Processor] = [
         structlog.contextvars.merge_contextvars,
         _add_request_id,
@@ -62,6 +75,10 @@ def configure(level: str = "INFO", fmt: str = "json") -> None:
     root.handlers[:] = [h for h in root.handlers if h.get_name() != _HANDLER_NAME]
     root.addHandler(handler)
     root.setLevel(level)
+    for name, most in NOISY_LOGGERS.items():
+        logging.getLogger(name).setLevel(most)
+    for name in CORE_LOGGERS:
+        logging.getLogger(name).setLevel("WARNING" if quiet_core else logging.NOTSET)
     # uvicorn installs its own handlers; route its records through ours instead.
     for name in ("uvicorn", "uvicorn.error"):
         logging.getLogger(name).handlers.clear()

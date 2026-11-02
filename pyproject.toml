@@ -18,6 +18,9 @@ dependencies = [
     "structlog>=24.4",
     "typer>=0.15",
     "uvicorn[standard]>=0.32",
+    # pypdf needs it to decode CFF fonts, common in publishers' PDFs; without it the
+    # text of those fonts can come out wrong, and pypdf warns once per font per page.
+    "fonttools>=4.68.0",
 ]
 
 [project.scripts]

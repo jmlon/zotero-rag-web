@@ -50,7 +50,7 @@ credentials hidden. The embedding model must return at most 2,000 dimensions
 | `zrw migrate` | Create or upgrade the database schema. Safe on every deploy. |
 | `zrw config` | Show the effective settings, credentials hidden. |
 | `zrw version` | Show the version. |
-| `zrw index` | Sync the Zotero group into the database; only what changed is processed. `--full` re-plans everything. Exit 0 ok, 1 error, 3 needs attention. |
+| `zrw index` | Sync the Zotero group into the database; only what changed is processed. `--full` re-plans everything; `-v` logs each file, `--json` prints the full report. Exit 0 ok, 1 error, 3 needs attention. |
 | `zrw status` | What is indexed, how the last syncs went, and how the index was built. |
 | `zrw reindex --repair` / `--rechunk` | Rebuild the index after changing `EMBEDDING_MODEL`, or `CHUNK_SIZE` / `CHUNK_OVERLAP`. |
 

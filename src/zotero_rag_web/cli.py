@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from importlib import resources
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import psycopg
 import typer
@@ -19,6 +19,9 @@ from pydantic import ValidationError
 from zotero_rag_web import __version__, logs
 from zotero_rag_web.db import libpq_url
 from zotero_rag_web.settings import MissingSettingError, Settings
+
+if TYPE_CHECKING:
+    from zotero_rag_web.indexing.sync import SyncReport
 
 #: `zrw index` exit codes, for the platform's job history.
 EXIT_OK, EXIT_ERROR, EXIT_ATTENTION = 0, 1, 3
@@ -76,6 +79,51 @@ def _require(settings: Settings, *names: Any) -> None:
         raise typer.Exit(code=2) from exc
 
 
+def summary(report: SyncReport) -> str:
+    """What a sync did, in a few lines: what changed, what failed, what it cost."""
+    if report.status == "unchanged":
+        return f"Library unchanged (version {report.version_after}); nothing to do."
+    if report.status == "locked":
+        return "Another sync is running; nothing to do."
+    before = report.version_before if report.version_before is not None else "none"
+    lines = [f"Sync {report.status}: library version {before} -> {report.version_after}"]
+    done = [
+        f"{report.indexed} indexed" if report.indexed else "",
+        f"{report.reindexed} re-indexed" if report.reindexed else "",
+        f"{report.already_indexed} already indexed" if report.already_indexed else "",
+        f"{report.no_text} without text" if report.no_text else "",
+        f"{report.failed} failed" if report.failed else "",
+    ]
+    lines.append("  Attachments: " + (", ".join(d for d in done if d) or "none planned"))
+    if report.chunks_added:
+        lines.append(
+            f"  Added {report.chunks_added:,} chunks ({report.embedding_tokens:,} embedding tokens)"
+        )
+    removed = [
+        f"{report.removed_attachments} attachment(s), {report.removed_chunks:,} chunks removed"
+        if report.removed_attachments
+        else "",
+        f"{report.replaced_copies} replaced copy(ies) dropped" if report.replaced_copies else "",
+        f"{report.moved} moved between collections" if report.moved else "",
+    ]
+    if any(removed):
+        lines.append("  " + "; ".join(r for r in removed if r))
+    if report.removal_blocked:
+        lines.append(
+            f"  {report.removal_blocked} removal(s) held back: run with --allow-mass-removal "
+            "if they are meant"
+        )
+    for failure in report.failures:
+        lines.append(
+            f"  Failed: {failure.get('title') or failure.get('attachment_key')}: "
+            f"{failure.get('error')}"
+        )
+    if report.message:
+        lines.append(f"  {report.message}")
+    lines.append(f"  {report.elapsed_s:.1f} s")
+    return "\n".join(lines)
+
+
 @app.command()
 def index(
     full: Annotated[
@@ -91,15 +139,24 @@ def index(
     trigger: Annotated[str, typer.Option(help="Recorded with the run: cron, manual, ...")] = (
         "manual"
     ),
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Log each file and request as it goes.")
+    ] = False,
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Print the full report as JSON instead of a summary.")
+    ] = False,
 ) -> None:
     """Sync the Zotero group into the database. Exit 0 ok, 1 error, 3 needs attention."""
     from zotero_rag_web.indexing.sync import run_sync
 
     settings = _settings()
     _require(settings, "database", "zotero", "openrouter")
-    logs.configure(settings.log_level, settings.log_format)
+    logs.configure(settings.log_level, settings.log_format, quiet_core=not verbose)
     report = run_sync(settings, trigger=trigger, full=full, allow_mass_removal=allow_mass_removal)
-    typer.echo(json.dumps({"status": report.status, **report.stats()}, indent=2))
+    if as_json:
+        typer.echo(json.dumps({"status": report.status, **report.stats()}, indent=2))
+    else:
+        typer.echo(summary(report))
     if report.status == "error":
         raise typer.Exit(code=EXIT_ERROR)
     if report.status == "needs_attention":
