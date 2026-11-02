@@ -252,7 +252,9 @@ and `zrw migrate` creates the schema.
 
 ## M2 — Indexer and retrieval on Postgres
 
-> **Status (2026-11-02): built; the live check is pending a valid OpenRouter key.**
+> **Status (2026-11-02): done.** The live check (`scripts/live_sync_check.py`) passed
+> 11/11 against the test group with real embeddings: index, keyword and vector search,
+> a move and re-tag with nothing re-embedded, and the removal guard.
 > 51 tests run the sync against a fake Zotero, real PDFs and a real database, and
 > cover new, moved, re-tagged, replaced and deleted items. Parity with the CLI is
 > measured: same retrieval on 36/36 questions, score 4.75 vs 4.78 (`docs/parity.md`).
