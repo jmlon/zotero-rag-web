@@ -5,27 +5,28 @@ Run with `uvicorn zotero_rag_web.app:create_app --factory`.
 
 from __future__ import annotations
 
+import asyncio
 import logging
-import time
-import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
 
 from zotero_rag_web import __version__, logs
+from zotero_rag_web.api import conversations, errors, library, messages
+from zotero_rag_web.chat.service import AnswerEngine
 from zotero_rag_web.db import open_pool, ping
+from zotero_rag_web.identity import Identity
+from zotero_rag_web.middleware import RequestContext
 from zotero_rag_web.settings import Settings
 
 logger = logging.getLogger(__name__)
-access_logger = logging.getLogger("zotero_rag_web.access")
 
-REQUEST_ID_HEADER = "X-Request-ID"
 #: The deployment is reachable by URL, not meant to be found (PRD §8.1).
-ROBOTS_HEADER = ("X-Robots-Tag", "noindex, nofollow")
 ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
 
 #: Shown at / when the React app has not been built (`npm run build` in web/).
@@ -36,9 +37,12 @@ NOT_BUILT_PAGE = """<!doctype html>
 or use the Docker image.</p></body></html>"""
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, engine: AnswerEngine | None = None) -> FastAPI:
+    """The app. `engine` replaces the answering pipeline (tests); by default it is
+    built at startup when the OpenRouter key is set."""
     settings = settings or Settings()
     logs.configure(settings.log_level, settings.log_format)
+    identity = Identity(settings.secret_key.get_secret_value() if settings.secret_key else None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -48,10 +52,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # stop the web server from starting (see `db.open_pool`).
             pool.open(wait=False)
         app.state.pool = pool
+        app.state.engine = engine or _build_engine(settings, pool)
         logger.info("started", extra={"version": __version__})
         try:
             yield
         finally:
+            # Answers still being written finish and are saved before the pool closes.
+            if app.state.workers:
+                await asyncio.wait(list(app.state.workers), timeout=30)
             if pool is not None:
                 pool.close()
 
@@ -64,35 +72,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
     )
     app.state.settings = settings
-
-    @app.middleware("http")
-    async def request_context(
-        request: Request, call_next: Callable[[Request], Awaitable[Response]]
-    ) -> Response:
-        """A request id for every request (kept if the platform's proxy sent one),
-        echoed in the response and attached to every log line, and `noindex`."""
-        incoming = request.headers.get(REQUEST_ID_HEADER, "")
-        current = incoming if 0 < len(incoming) <= 64 else uuid.uuid4().hex
-        token = logs.request_id.set(current)
-        start = time.perf_counter()
-        status = 500
-        try:
-            response = await call_next(request)
-            status = response.status_code
-        finally:
-            # The access line, written here so it carries the request id
-            # (uvicorn's own access log runs with --no-access-log).
-            access_logger.info(
-                "%s %s %d",
-                request.method,
-                request.url.path,
-                status,
-                extra={"duration_ms": round((time.perf_counter() - start) * 1000, 1)},
-            )
-            logs.request_id.reset(token)
-        response.headers[REQUEST_ID_HEADER] = current
-        response.headers[ROBOTS_HEADER[0]] = ROBOTS_HEADER[1]
-        return response
+    app.state.identity = identity
+    app.state.workers = set()
+    app.add_middleware(RequestContext, identity=identity, cookie_secure=settings.cookie_secure)
+    errors.install(app)
+    app.include_router(library.router)
+    app.include_router(conversations.router)
+    app.include_router(messages.router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz(request: Request) -> JSONResponse:
@@ -146,3 +132,11 @@ def _mount_spa(app: FastAPI, static_dir: Path) -> None:
         if path and candidate.is_file() and candidate.parent == static_dir.resolve():
             return FileResponse(candidate)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
+def _build_engine(settings: Settings, pool: Any) -> AnswerEngine | None:
+    """The answering pipeline, or None (asking answers 503) until the key is set."""
+    if pool is None or settings.openrouter_api_key is None:
+        logger.warning("no OPENROUTER_API_KEY or database: questions cannot be answered")
+        return None
+    return AnswerEngine.from_settings(settings, pool)
