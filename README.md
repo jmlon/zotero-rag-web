@@ -9,17 +9,18 @@ the library behind the `zotero-rag` CLI: the same retrieval, reranking and cited
 answering, measured with the same evaluation. The chunks live in PostgreSQL with
 pgvector, and the app is one Docker image plus that database.
 
-**Status: M1, the scaffold.** The server, database schema and page shell run; the
-indexer (M2), the chat API (M3) and the chat UI (M4) are next. See [PLAN.md](PLAN.md)
-for the milestones and [PRD.md](PRD.md) for the design.
+**Status: M4.** The indexer, the chat API and the chat interface are built and
+tested; deploying to Railway (M5) is next. See [PLAN.md](PLAN.md) for the milestones
+and [PRD.md](PRD.md) for the design.
 
 ## Run it locally
 
-With Docker:
+With Docker: [LOCAL-DOCKER.md](LOCAL-DOCKER.md) walks through it step by step. In short:
 
 ```bash
-cp .env.example .env          # credentials are not needed yet for M1
-docker compose up --build     # database, migration, then the app
+cp .env.example .env                    # fill in the Zotero and OpenRouter keys
+docker compose up --build -d            # database, migration, then the app
+docker compose exec web zrw index       # index the library (re-run after it changes)
 open http://localhost:8000
 ```
 
@@ -49,6 +50,9 @@ credentials hidden. The embedding model must return at most 2,000 dimensions
 | `zrw migrate` | Create or upgrade the database schema. Safe on every deploy. |
 | `zrw config` | Show the effective settings, credentials hidden. |
 | `zrw version` | Show the version. |
+| `zrw index` | Sync the Zotero group into the database; only what changed is processed. `--full` re-plans everything. Exit 0 ok, 1 error, 3 needs attention. |
+| `zrw status` | What is indexed, how the last syncs went, and how the index was built. |
+| `zrw reindex --repair` / `--rechunk` | Rebuild the index after changing `EMBEDDING_MODEL`, or `CHUNK_SIZE` / `CHUNK_OVERLAP`. |
 
 ## Development
 
@@ -56,7 +60,11 @@ credentials hidden. The embedding model must return at most 2,000 dimensions
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 uv run pytest -q                 # starts a throwaway pgvector container through Docker
 cd web && npm run lint && npm run typecheck && npm test
+npx playwright install chromium && npm run test:e2e              # browser tests, from web/
 ```
+
+The browser tests run the real backend with fake models, so they cost nothing; like
+the database tests, they start a pgvector container through Docker.
 
 Database tests use `ZRW_TEST_PG_URL` if it is set (a server they create and drop
 databases on), and otherwise start a `pgvector/pgvector:pg17` container. Without
