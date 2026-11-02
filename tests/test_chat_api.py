@@ -22,6 +22,7 @@ from tests.conftest import make_settings
 from zotero_rag_core.fingerprint import StoreFingerprint
 from zotero_rag_core.querying import NO_CONTEXT_ANSWER, Source
 from zotero_rag_core.stores.pg import PgFullTextSearcher, PgStore
+from zotero_rag_web.api.library import library_url
 from zotero_rag_web.app import create_app
 from zotero_rag_web.chat.service import AnswerEngine, source_json
 from zotero_rag_web.cli import app as cli
@@ -115,7 +116,8 @@ def indexed(database_url: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]
             "('OTHER', NULL, 'Other', 'Other')"
         )
         conn.execute(
-            "INSERT INTO library (id, group_id, name, last_sync_status) VALUES (1, 1, 'Team', 'ok')"
+            "INSERT INTO library (id, group_id, name, web_url, last_sync_status) "
+            "VALUES (1, 1, 'Team', 'https://www.zotero.org/groups/1', 'ok')"
         )
     yield database_url
 
@@ -388,6 +390,7 @@ def test_library_collections_and_tags(client: TestClient) -> None:
     library = client.get("/api/library").json()
     assert (library["name"], library["chunks"], library["indexed"]) == ("Team", 1, True)
     assert (library["year_min"], library["year_max"]) == (2016, 2016)
+    assert library["library_url"] == "https://www.zotero.org/groups/1/team/library"
     paths = [c["path"] for c in client.get("/api/collections").json()]
     assert paths == ["Networking", "Networking/Edge", "Other"]
     assert client.get("/api/tags").json() == [{"tag": "fog", "items": 1}]
@@ -493,3 +496,26 @@ def test_only_a_pdf_links_to_the_reader(
     )
     assert source_json(source, formats)["zotero_url"] == url
     assert source_json(source)["zotero_url"] == "https://www.zotero.org/groups/1/items/P1"
+
+
+@pytest.mark.parametrize(
+    ("web_url", "name", "url"),
+    [
+        (
+            "https://www.zotero.org/groups/6743389",
+            "AI_EDU_UPB",
+            "https://www.zotero.org/groups/6743389/ai_edu_upb/library",
+        ),
+        (
+            "https://www.zotero.org/groups/7",
+            "Redes & Edge (2026)",
+            "https://www.zotero.org/groups/7/redes_edge_2026/library",
+        ),
+        ("https://www.zotero.org/groups/7", None, "https://www.zotero.org/groups/7/group/library"),
+        (None, "Team", None),
+    ],
+)
+def test_the_library_link_carries_a_short_name_zotero_org_can_redirect(
+    web_url: str | None, name: str | None, url: str | None
+) -> None:
+    assert library_url(web_url, name) == url

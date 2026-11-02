@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router";
 
 import type { ConversationSummary } from "../api/types";
 import { LANGUAGES, type Language, rememberLanguage } from "../i18n";
-import { useConversations, useDeleteConversation } from "../hooks/queries";
+import { useConversations, useDeleteConversation, useLibrary } from "../hooks/queries";
 import { useNow } from "../hooks/useNow";
 
 const DAY = 24 * 3600 * 1000;
@@ -28,6 +28,7 @@ export function Sidebar({ activeId, onNavigate }: { activeId?: string; onNavigat
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { data: conversations = [] } = useConversations();
+  const { data: library } = useLibrary();
   const remove = useDeleteConversation();
   const now = useNow();
   const groups = group(conversations, now);
@@ -39,6 +40,18 @@ export function Sidebar({ activeId, onNavigate }: { activeId?: string; onNavigat
 
   return (
     <nav className="sidebar" aria-label={t("sidebar.conversations")}>
+      {library?.name && library.library_url && (
+        <a
+          className="library-link"
+          href={library.library_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={t("sidebar.openLibrary")}
+        >
+          {library.name}
+          <span className="visually-hidden"> ({t("sidebar.openLibrary")})</span>
+        </a>
+      )}
       <Link to="/" className="button primary new-conversation" onClick={onNavigate}>
         + {t("sidebar.new")}
       </Link>

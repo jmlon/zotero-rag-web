@@ -101,8 +101,8 @@ def seed(url: str, settings: Settings) -> None:
             "('OTHER', NULL, 'Routing', 'Routing', 1)"
         )
         conn.execute(
-            "INSERT INTO library (id, group_id, name, last_sync_at, last_sync_status) "
-            "VALUES (1, 1, 'Test Library', now(), 'ok')"
+            "INSERT INTO library (id, group_id, name, web_url, last_sync_at, last_sync_status) "
+            "VALUES (1, 1, 'Test Library', 'https://www.zotero.org/groups/1', now(), 'ok')"
         )
 
 

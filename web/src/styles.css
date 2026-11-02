@@ -265,6 +265,21 @@ button:disabled {
   min-height: 100%;
 }
 
+.library-link {
+  align-self: flex-end;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.library-link:hover {
+  text-decoration: underline;
+}
+
 .new-conversation {
   text-align: center;
 }

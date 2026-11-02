@@ -15,7 +15,8 @@
     "confirmDelete": "¿Eliminar esta conversación?",
     "untitled": "Nueva conversación",
     "open": "Conversaciones",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "openLibrary": "Abrir la biblioteca en zotero.org"
   },
   "language": {
     "label": "Idioma"

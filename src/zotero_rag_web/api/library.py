@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import APIRouter, Query
@@ -9,6 +10,19 @@ from fastapi import APIRouter, Query
 from zotero_rag_web.api.deps import Connection
 
 router = APIRouter(prefix="/api", tags=["library"])
+
+
+def library_url(web_url: str | None, name: str | None) -> str | None:
+    """The group's library on zotero.org, from its page (`/groups/<id>`) and name.
+
+    The address needs the group's short name after its id, but zotero.org redirects
+    `/groups/<id>/<any name>/library` to the right one, so a name derived from the
+    group's own is enough, and stays enough after the group is renamed.
+    """
+    if not web_url:
+        return None
+    short = re.sub(r"[^a-z0-9]+", "_", (name or "").lower()).strip("_") or "group"
+    return f"{web_url.rstrip('/')}/{short}/library"
 
 
 @router.get("/library")
@@ -25,6 +39,7 @@ def library(conn: Connection) -> dict[str, Any]:
     return {
         "name": name,
         "web_url": web_url,
+        "library_url": library_url(web_url, name),
         "items": items,
         "chunks": chunks,
         "indexed": chunks > 0,

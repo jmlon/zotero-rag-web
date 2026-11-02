@@ -26,6 +26,10 @@ test("asking from the welcome screen streams a cited answer", async ({ page, con
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "What would you like to know?" })).toBeVisible();
   await expect(page.getByText(/Test Library: 2 items · synced/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Test Library/ })).toHaveAttribute(
+    "href",
+    "https://www.zotero.org/groups/1/test_library/library",
+  );
 
   await ask(page, "What is a fog node?");
   await expect(page).toHaveURL(/\/c\/[0-9a-f-]{36}$/);

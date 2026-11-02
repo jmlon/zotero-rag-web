@@ -3,6 +3,8 @@
 export interface Library {
   name: string | null;
   web_url: string | null;
+  /** The group's library on zotero.org. */
+  library_url: string | null;
   items: number;
   chunks: number;
   indexed: boolean;
