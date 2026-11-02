@@ -1,0 +1,96 @@
+{
+  "app": {
+    "title": "Zotero RAG",
+    "tagline": "Pregunta a la biblioteca Zotero de tu equipo. Cada respuesta cita sus fuentes."
+  },
+  "sidebar": {
+    "new": "Nueva conversación",
+    "conversations": "Conversaciones",
+    "today": "Hoy",
+    "week": "Últimos 7 días",
+    "older": "Anteriores",
+    "empty": "Aún no hay conversaciones.",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar esta conversación?",
+    "untitled": "Nueva conversación",
+    "open": "Conversaciones",
+    "close": "Cerrar"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "composer": {
+    "placeholder": "Escribe una pregunta…",
+    "send": "Enviar",
+    "stop": "Detener",
+    "hint": "Enter para enviar, Shift+Enter para una nueva línea",
+    "tooLong": "{{count}} caracteres por encima del límite"
+  },
+  "stage": {
+    "condensing": "Interpretando la pregunta de seguimiento…",
+    "retrieving": "Buscando en la biblioteca…",
+    "answering": "Redactando la respuesta…"
+  },
+  "answer": {
+    "sources": "Fuentes",
+    "searchedFor": "Se buscó: {{query}}",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "retry": "Reintentar",
+    "stopped": "Detenida.",
+    "openInZotero": "Abrir en Zotero",
+    "noResultsFiltered": "No hubo resultados con estos filtros.",
+    "searchEverything": "Buscar en toda la biblioteca",
+    "failed": "Sin respuesta: algo falló al responder.",
+    "inProgress": "Esta respuesta aún se está redactando…"
+  },
+  "filters": {
+    "label": "Filtros",
+    "collection": "Colección",
+    "wholeLibrary": "Toda la biblioteca",
+    "years": "Años",
+    "from": "Desde",
+    "to": "Hasta",
+    "includeUndated": "Incluir sin fecha",
+    "tags": "Etiquetas",
+    "addTag": "Añadir una etiqueta…",
+    "removeTag": "Quitar {{tag}}",
+    "clear": "Quitar filtros",
+    "changed": "Filtros cambiados",
+    "count_one": "Filtros ({{count}})",
+    "count_other": "Filtros ({{count}})"
+  },
+  "welcome": {
+    "heading": "¿Qué te gustaría saber?",
+    "examplesLabel": "Prueba a preguntar",
+    "examples": [
+      "¿Cuáles son los enfoques principales en esta biblioteca?",
+      "¿Qué artículos evalúan su método con datos reales?",
+      "Resume las limitaciones que mencionan los autores."
+    ],
+    "notIndexed": "La biblioteca aún no se ha indexado. Podrás preguntar cuando termine la primera sincronización."
+  },
+  "footer": {
+    "library": "{{name}}: {{items}} elementos · sincronizada {{when}}",
+    "neverSynced": "{{name}}: aún no sincronizada",
+    "syncProblem": "La última sincronización requiere atención",
+    "stale": "La biblioteca no se ha sincronizado en más de dos días",
+    "offline": "No se puede contactar con el servidor."
+  },
+  "errors": {
+    "rate_limited": "Has hecho muchas preguntas en poco tiempo. Inténtalo de nuevo en {{minutes}} minutos.",
+    "budget_exhausted": "Se agotó el presupuesto diario de preguntas del equipo. Se renueva a las 00:00 UTC.",
+    "llm_failed": "El modelo de lenguaje no respondió.",
+    "index_empty": "La biblioteca aún no se ha indexado.",
+    "index_mismatch": "El índice se está reconstruyendo; las preguntas están en pausa.",
+    "question_too_long": "La pregunta es demasiado larga.",
+    "conversation_full": "Esta conversación está llena. Empieza una nueva.",
+    "unknown_collection": "Esa colección ya no está en la biblioteca.",
+    "not_configured": "El servidor aún no está configurado del todo.",
+    "not_found": "Esta conversación no existe o pertenece a otro navegador.",
+    "invalid_request": "Algo en esa solicitud no era válido.",
+    "internal": "Algo falló en el servidor.",
+    "network": "No se puede contactar con el servidor."
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "app": {
+    "title": "Zotero RAG",
+    "tagline": "Ask your team's Zotero library. Every answer is cited."
+  },
+  "sidebar": {
+    "new": "New conversation",
+    "conversations": "Conversations",
+    "today": "Today",
+    "week": "Previous 7 days",
+    "older": "Older",
+    "empty": "No conversations yet.",
+    "rename": "Rename",
+    "delete": "Delete",
+    "confirmDelete": "Delete this conversation?",
+    "untitled": "New conversation",
+    "open": "Conversations",
+    "close": "Close"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "composer": {
+    "placeholder": "Ask a question…",
+    "send": "Send",
+    "stop": "Stop",
+    "hint": "Enter to send, Shift+Enter for a new line",
+    "tooLong": "{{count}} characters over the limit"
+  },
+  "stage": {
+    "condensing": "Understanding the follow-up…",
+    "retrieving": "Searching the library…",
+    "answering": "Writing the answer…"
+  },
+  "answer": {
+    "sources": "Sources",
+    "searchedFor": "Searched for: {{query}}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "retry": "Retry",
+    "stopped": "Stopped.",
+    "openInZotero": "Open in Zotero",
+    "noResultsFiltered": "Nothing matched within these filters.",
+    "searchEverything": "Search the whole library instead",
+    "failed": "No answer: something went wrong while answering.",
+    "inProgress": "This answer is still being written…"
+  },
+  "filters": {
+    "label": "Filters",
+    "collection": "Collection",
+    "wholeLibrary": "Whole library",
+    "years": "Years",
+    "from": "From",
+    "to": "To",
+    "includeUndated": "Include undated",
+    "tags": "Tags",
+    "addTag": "Add a tag…",
+    "removeTag": "Remove {{tag}}",
+    "clear": "Clear filters",
+    "changed": "Filters changed",
+    "count_one": "Filters ({{count}})",
+    "count_other": "Filters ({{count}})"
+  },
+  "welcome": {
+    "heading": "What would you like to know?",
+    "examplesLabel": "Try asking",
+    "examples": [
+      "What are the main approaches in this library?",
+      "Which papers evaluate their method on real data?",
+      "Summarise the limitations the authors mention."
+    ],
+    "notIndexed": "The library hasn't been indexed yet. Questions can be asked once the first sync has run."
+  },
+  "footer": {
+    "library": "{{name}}: {{items}} items · synced {{when}}",
+    "neverSynced": "{{name}}: not synced yet",
+    "syncProblem": "The last sync needs attention",
+    "stale": "The library hasn't synced for over two days",
+    "offline": "The server cannot be reached."
+  },
+  "errors": {
+    "rate_limited": "You've asked a lot of questions in a short time. Try again in {{minutes}} minutes.",
+    "budget_exhausted": "The team's daily question budget is used up. It resets at 00:00 UTC.",
+    "llm_failed": "The language model didn't respond.",
+    "index_empty": "The library hasn't been indexed yet.",
+    "index_mismatch": "The index is being rebuilt; questions are paused.",
+    "question_too_long": "That question is too long.",
+    "conversation_full": "This conversation is full. Start a new one.",
+    "unknown_collection": "That collection is no longer in the library.",
+    "not_configured": "The server isn't fully configured yet.",
+    "not_found": "This conversation doesn't exist, or belongs to another browser.",
+    "invalid_request": "Something in that request wasn't valid.",
+    "internal": "Something went wrong on the server.",
+    "network": "The server cannot be reached."
+  }
+}

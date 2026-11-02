@@ -193,8 +193,11 @@ def main() -> int:
             costs = [r.get("usage", {}).get("total_cost", 0) for r in (first, follow, spanish)]
             sources = {r.get("usage", {}).get("cost_source") for r in (first, follow, spanish)}
             # A streamed answer has no provider cost; it must be priced, not counted as free.
-            check("streamed answers are priced at list price",
-                  sources == {"list_price"} and all(c > 1e-5 for c in costs), (costs, sources))
+            check(
+                "streamed answers are priced at list price",
+                sources == {"list_price"} and all(c > 1e-5 for c in costs),
+                (costs, sources),
+            )
     finally:
         for item_key in reversed(made):
             try:

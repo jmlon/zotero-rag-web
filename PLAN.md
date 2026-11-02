@@ -419,6 +419,23 @@ tests do), and the dialogue review is recorded.
 
 ## M4 — Web UI
 
+> **Status (2026-11-02): done.** 16 unit tests (Vitest) and 6 browser tests (Playwright
+> with axe, desktop and phone) against `tests/e2e/server.py`: the real backend and
+> database with fake models. Where it differs from the steps below:
+>
+> - **No Tailwind; native controls for the filters** (a `<select>` of the collection
+>   tree, two year fields, a tag field with server autocomplete). The only component
+>   library is Radix Popover, for the citation cards.
+> - **Hand-written API types** instead of generated ones; the API is small.
+> - **Found by the browser tests, all fixed:** a hover-then-click on a citation chip
+>   closed its card (the click handler read a ref inside a deferred React update);
+>   the card unmounted when the saved answer replaced the streamed one (now one keyed
+>   list, so the component survives the handover); after Stop, a reload could show an
+>   empty "streaming" answer (the client now waits until the server has saved it);
+>   and the composer floated mid-page when the filter panel was closed (named grid
+>   areas).
+> - One ~200 kB (gzipped) bundle; splitting would add requests before the first answer.
+
 1. **Shell:** a sidebar (conversation list, new conversation, language toggle) and a
    main pane (filter bar, thread, composer, status footer). The sidebar becomes a
    drawer under 768 px.

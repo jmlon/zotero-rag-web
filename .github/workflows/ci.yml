@@ -42,6 +42,34 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  e2e:
+    # The built app in Chromium, against tests/e2e/server.py: the real backend and
+    # database with fake models, so a browser test never spends money.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.5"
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run test:e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results
+
   image:
     runs-on: ubuntu-latest
     steps:

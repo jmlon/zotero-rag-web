@@ -17,3 +17,7 @@ web/dist/
 
 # Spike output may contain library data.
 spikes/out/
+
+# Playwright
+web/test-results/
+web/playwright-report/
