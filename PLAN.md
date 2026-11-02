@@ -173,6 +173,20 @@ tag `core-v0.5.0` is pushed.
 
 ## M1 — `zotero-rag-web` scaffold
 
+> **Status (2026-11-02): done.** `docker compose up` serves the page shell, `/healthz`
+> is green, and `zrw migrate` creates the schema (11 tables). Where it differs from
+> the steps below:
+>
+> - **The model catalogue is not in the core** (it is in the CLI's `config.yaml`), so
+>   `settings.py` keeps its own table of known embedding widths, with
+>   `EMBEDDING_DIMENSIONS` for any other model.
+> - **zotero-rag is now public**, so builds fetch the core's git tag without credentials.
+> - **Logging**: the app writes one JSON access line per request, with its request id,
+>   and silences uvicorn's own access line.
+> - **`zrw`** has `migrate`, `config` and `version`. The rest arrives with the indexer in M2.
+> - **Railway files** (`railway.json`, `railway.indexer.json`) move to M5, with the
+>   deployment.
+
 ### Layout
 
 ```

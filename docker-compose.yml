@@ -1,0 +1,48 @@
+# Local development: `docker compose up --build`, then http://localhost:8000.
+# Credentials come from .env (see .env.example); the database is this file's own.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: zrw
+      POSTGRES_PASSWORD: zrw
+      POSTGRES_DB: zrw
+    ports:
+      - "5433:5432"   # 5433 on the host, to stay clear of a local PostgreSQL
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zrw -d zrw"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build: .
+    command: ["zrw", "migrate"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://zrw:zrw@db:5432/zrw
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://zrw:zrw@db:5432/zrw
+      LOG_FORMAT: console
+      COOKIE_SECURE: "false"   # plain http on localhost
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
