@@ -16,7 +16,8 @@
     "untitled": "Nueva conversación",
     "open": "Conversaciones",
     "close": "Cerrar",
-    "openLibrary": "Abrir la biblioteca en zotero.org"
+    "openLibrary": "Abrir la biblioteca en zotero.org",
+    "groupLibrary": "Biblioteca del grupo:"
   },
   "language": {
     "label": "Idioma"

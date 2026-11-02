@@ -265,15 +265,29 @@ button:disabled {
   min-height: 100%;
 }
 
+.library-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
 .library-link {
-  align-self: flex-end;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* The sidebar's gap is 0.5rem; the rule gets more room below than above. */
+.library-rule {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 0.75rem;
 }
 
 .library-link:hover {

@@ -41,16 +41,22 @@ export function Sidebar({ activeId, onNavigate }: { activeId?: string; onNavigat
   return (
     <nav className="sidebar" aria-label={t("sidebar.conversations")}>
       {library?.name && library.library_url && (
-        <a
-          className="library-link"
-          href={library.library_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={t("sidebar.openLibrary")}
-        >
-          {library.name}
-          <span className="visually-hidden"> ({t("sidebar.openLibrary")})</span>
-        </a>
+        <>
+          <div className="library-heading">
+            <span className="muted">{t("sidebar.groupLibrary")}</span>
+            <a
+              className="library-link"
+              href={library.library_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t("sidebar.openLibrary")}
+            >
+              {library.name}
+              <span className="visually-hidden"> ({t("sidebar.openLibrary")})</span>
+            </a>
+          </div>
+          <hr className="library-rule" aria-hidden="true" />
+        </>
       )}
       <Link to="/" className="button primary new-conversation" onClick={onNavigate}>
         + {t("sidebar.new")}
