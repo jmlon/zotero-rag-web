@@ -33,7 +33,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-zotero-rag-core = { git = "https://github.com/jmlon/zotero-rag", subdirectory = "packages/zotero-rag-core", tag = "core-v0.5.1" }
+zotero-rag-core = { git = "https://github.com/jmlon/zotero-rag", subdirectory = "packages/zotero-rag-core", tag = "core-v0.5.2" }
 
 [build-system]
 requires = ["hatchling"]

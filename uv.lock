@@ -2640,8 +2640,8 @@ wheels = [
 
 [[package]]
 name = "zotero-rag-core"
-version = "0.5.1"
-source = { git = "https://github.com/jmlon/zotero-rag?subdirectory=packages%2Fzotero-rag-core&tag=core-v0.5.1#07abe240947087c745669c0c4882652259c330ca" }
+version = "0.5.2"
+source = { git = "https://github.com/jmlon/zotero-rag?subdirectory=packages%2Fzotero-rag-core&tag=core-v0.5.2#112bb3a11cc3bc3535b787ce9428ea7327cb4f6d" }
 dependencies = [
     { name = "httpx" },
     { name = "langchain-core" },
@@ -2703,7 +2703,7 @@ requires-dist = [
     { name = "structlog", specifier = ">=24.4" },
     { name = "typer", specifier = ">=0.15" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
-    { name = "zotero-rag-core", extras = ["pgvector"], git = "https://github.com/jmlon/zotero-rag?subdirectory=packages%2Fzotero-rag-core&tag=core-v0.5.1" },
+    { name = "zotero-rag-core", extras = ["pgvector"], git = "https://github.com/jmlon/zotero-rag?subdirectory=packages%2Fzotero-rag-core&tag=core-v0.5.2" },
 ]
 
 [package.metadata.requires-dev]
