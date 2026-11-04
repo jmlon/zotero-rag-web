@@ -1,8 +1,11 @@
 import * as Popover from "@radix-ui/react-popover";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Source } from "../api/types";
+
+/** How long the card stays up after the pointer leaves the chip or the card. */
+const CLOSE_DELAY_MS = 200;
 
 /** `[n]` in an answer: hover or tap for the source, follow its link to Zotero. */
 export function CitationChip({ number, source }: { number: number; source?: Source }) {
@@ -12,6 +15,19 @@ export function CitationChip({ number, source }: { number: number; source?: Sour
   // its click must keep it open; a tap or Enter toggles it.
   const pointer = useRef<string>("");
   const trigger = useRef<HTMLButtonElement>(null);
+  // Leaving the chip or the card closes it only after a short grace, so the
+  // pointer can cross the gap between them; entering either one cancels it.
+  const closeTimer = useRef<number | undefined>(undefined);
+  const cancelClose = () => window.clearTimeout(closeTimer.current);
+  const show = () => {
+    cancelClose();
+    setOpen(true);
+  };
+  const hideSoon = () => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  };
+  useEffect(() => cancelClose, []);
   if (!source) return <span className="chip chip-unknown">[{number}]</span>;
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -19,8 +35,8 @@ export function CitationChip({ number, source }: { number: number; source?: Sour
         ref={trigger}
         className="chip"
         aria-label={`[${number}] ${source.title}`}
-        onPointerEnter={(event) => event.pointerType === "mouse" && setOpen(true)}
-        onPointerLeave={(event) => event.pointerType === "mouse" && setOpen(false)}
+        onPointerEnter={(event) => event.pointerType === "mouse" && show()}
+        onPointerLeave={(event) => event.pointerType === "mouse" && hideSoon()}
         onPointerDown={(event) => {
           pointer.current = event.pointerType;
         }}
@@ -29,6 +45,7 @@ export function CitationChip({ number, source }: { number: number; source?: Sour
           // Read now: React runs the updater later, after the reset below.
           const byMouse = pointer.current === "mouse";
           pointer.current = "";
+          cancelClose();
           setOpen((current) => (byMouse ? true : !current));
         }}
       >
@@ -40,8 +57,8 @@ export function CitationChip({ number, source }: { number: number; source?: Sour
           side="top"
           sideOffset={6}
           collisionPadding={16}
-          onPointerEnter={() => setOpen(true)}
-          onPointerLeave={(event) => event.pointerType === "mouse" && setOpen(false)}
+          onPointerEnter={show}
+          onPointerLeave={(event) => event.pointerType === "mouse" && hideSoon()}
           // A press on the chip is not "outside": the chip's own click decides.
           onInteractOutside={(event) => {
             if (trigger.current?.contains(event.target as Node)) event.preventDefault();
